@@ -28,6 +28,7 @@ class SuperTrendwithMovingAverage:
         self.find_moving_average()
         self.find_super_trend()
         self.data_df = self.data_df.fillna({"buy/sell signal":""})
+        self.data_df.fillna({"moving_average":0},inplace=True)
         temp_res = self.data_df[(self.data_df['close'] > self.data_df['moving_average']) & (self.data_df['buy/sell signal'] != "")]
         return temp_res
 

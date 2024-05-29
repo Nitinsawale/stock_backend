@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from server.service.ticker_service import get_stock_data, update_latest_stock_list
+from server.service.ticker_service import get_stock_data, update_latest_stock_list, get_stock_list
 from fastapi.responses import JSONResponse
 
 router = APIRouter()
@@ -20,3 +20,9 @@ async def get_ticker_data():
     return "Done"
 
 
+
+@router.get("/")
+def get_list():
+
+    df =  get_stock_list()  
+    return df.iloc[:100].to_dict(orient = "records")

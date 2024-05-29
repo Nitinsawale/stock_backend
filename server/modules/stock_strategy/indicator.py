@@ -73,13 +73,19 @@ class SuperTrend:
     def calculate_indicator_values(self, length, multiplier):
         df =  pta.supertrend(self.data_df['high'], self.data_df['low'], self.data_df['close'],length= length, multiplier = multiplier)
         col_name = f"SUPERTd_{length}_{multiplier}"
-        self.data_df['super_trend'] = df[col_name]
-        buy_signal = (self.data_df['super_trend'] == 1) & (self.data_df['super_trend'].shift() == -1)
-        sell_signal = (self.data_df['super_trend'] == -1) & (self.data_df['super_trend'].shift() == 1)
-        self.data_df.loc[buy_signal, 'buy/sell signal'] = "BUY"
-        self.data_df.loc[sell_signal, 'buy/sell signal'] = "SELL"
+    
+        if type(df) != type(None) and not df.empty:
+            self.data_df['super_trend'] = df[col_name]
+            buy_signal = (self.data_df['super_trend'] == 1) & (self.data_df['super_trend'].shift() == -1)
+            sell_signal = (self.data_df['super_trend'] == -1) & (self.data_df['super_trend'].shift() == 1)
+            self.data_df.loc[buy_signal, 'buy/sell signal'] = "BUY"
+            self.data_df.loc[sell_signal, 'buy/sell signal'] = "SELL"
+        else:
+            self.data_df['super_trend'] = 0
+            self.data_df['buy/sell signal'] = "NA"
         return self.data_df
-
+        
+        
 
 
 class MovingAverage:

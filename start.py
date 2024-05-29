@@ -12,8 +12,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(ticker_router)
-app.include_router(stat_router)
+app.include_router(ticker_router, prefix="/ticker")
+app.include_router(stat_router, prefix="/strategy")
 
 
 
