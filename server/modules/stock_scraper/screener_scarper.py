@@ -1,9 +1,10 @@
-from web_scraper.web_scraper import WebScraper
+from server.modules.web_scraper.web_scraper import WebScraper
 import re
 import pandas as pd
 import json
 import logging
 logging.basicConfig(level= logging.INFO)
+
 class ScreenerScraper(WebScraper):
     
     def __init__(self):
@@ -181,7 +182,6 @@ class ScreenerScraper(WebScraper):
             if "data-result-table"  in tag.get("tag_attributes",{}):
                 table = tag['tag_data'][0]
                 table_df = self.extract_table(table)
-                import pdb;pdb.set_trace()
                 table_df = self.format_table_data(table_df)
                 logging.info("ratio results generated")
                 print(table_df)

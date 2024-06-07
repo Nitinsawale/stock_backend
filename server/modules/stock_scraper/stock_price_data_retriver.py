@@ -3,14 +3,18 @@ import os
 import pandas as pd
 import yfinance as yf
 import logging
-from constants import CHART_DATA_STORAGE_LOCATION
 import requests 
 import concurrent
 import asyncio
 from datetime import datetime
 import time
-
+from server.utils.stock_db_service import db_obj
+from constants import CHART_DATA_STORAGE_LOCATION
+from server.modules.stock_scraper.stock_list_retriever import get_stock_list
 logger = logging.basicConfig(level=logging.INFO)
+
+
+
 
 
 
@@ -26,28 +30,93 @@ async def all_urls(urls, func_name):
 
 class CandlePriceRetriever:
 
-    def __init__(self, ticker_names, ticker_type="stock"):
-        self.ticker_names = ticker_names
+    def __init__(self, ticker_type="stock"):
+        self.ticker_names = get_stock_list()
         self.ticker_type = ticker_type
-        self.stock_to_fetch = []
+        self.stocks_to_update = []
         if not os.path.exists(CHART_DATA_STORAGE_LOCATION):
             os.mkdir(CHART_DATA_STORAGE_LOCATION)
         
+        self.update_existing_data()
+        
     
+
+
+    def get_list_of_data_local_non_local(self, time_interval):
+        self.stocks_to_update =  db_obj.get_list_stocks_with_candle_data()
+        self.stocks_to_update = [
+            {
+                "index": 0,
+                "upstox_id": "NSE_EQ|INE144J01027",
+                "instrument_type": "EQUITY",
+                "exchange": "NSE_EQ",
+                "symbol": "20MICRONS",
+                "name_of_company": "20 Microns Limited",
+                "date_of_listing": "2008-10-06",
+                "isin_number": "INE144J01027",
+                "id": "5e8520a8-c95c-4924-8209-3c3169b5c9d0",
+                "market_cap": 0
+            },
+            {
+                "index": 1,
+                "upstox_id": "NSE_EQ|INE253B01015",
+                "instrument_type": "EQUITY",
+                "exchange": "NSE_EQ",
+                "symbol": "21STCENMGM",
+                "name_of_company": "21st Century Management Services Limited",
+                "date_of_listing": "1995-05-03",
+                "isin_number": "INE253B01015",
+                "id": "b9de69a1-1548-495b-a69c-58bd46294878",
+                "market_cap": 0
+            },
+            {
+                "index": 2,
+                "upstox_id": "NSE_EQ|INE466L01038",
+                "instrument_type": "EQUITY",
+                "exchange": "NSE_EQ",
+                "symbol": "360ONE",
+                "name_of_company": "360 ONE WAM LIMITED",
+                "date_of_listing": "2019-09-19",
+                "isin_number": "INE466L01038",
+                "id": "e5e47c8c-9d2d-4364-8fe8-2325e2d505c1",
+                "market_cap": 0
+            },
+            {
+                "index": 3,
+                "upstox_id": "NSE_EQ|INE748C01038",
+                "instrument_type": "EQUITY",
+                "exchange": "NSE_EQ",
+                "symbol": "3IINFOLTD",
+                "name_of_company": "3i Infotech Limited",
+                "date_of_listing": "2021-10-22",
+                "isin_number": "INE748C01038",
+                "id": "337ff565-9778-4263-8e15-f2cd11f2cca0",
+                "market_cap": 0
+            },
+            {
+                "index": 4,
+                "upstox_id": "NSE_EQ|INE470A01017",
+                "instrument_type": "EQUITY",
+                "exchange": "NSE_EQ",
+                "symbol": "3MINDIA",
+                "name_of_company": "3M India Limited",
+                "date_of_listing": "2004-08-13",
+                "isin_number": "INE470A01017",
+                "id": "23943793-e825-47f8-9311-775ae9ba26e3",
+                "market_cap": 0
+            }]
+
+    def update_existing_data(self):
+        loop = asyncio.new_event_loop()
+        #loop.run_until_complete(self.fetch_data("10y", "day")) 
+            
+
 
     async def fetch_data(self,time_period, time_interval, source="upstox"):
 
+        self.get_list_of_data_local_non_local(time_interval=time_interval)
         return_data = {}
-        for x in self.ticker_names:
-            file_location = CHART_DATA_STORAGE_LOCATION + f"{x}_{time_interval}.xlsx"
-
-            if os.path.exists(file_location):
-                logging.info(f"reading from local")
-                return_data[x]  = pd.read_excel(file_location)
-            else:
-                self.stock_to_fetch.append(x)
-        print(self.stock_to_fetch)
-        if self.stock_to_fetch:
+        if self.stocks_to_update:
 
             data = {}
             if source == 'yahoo':
@@ -59,8 +128,8 @@ class CandlePriceRetriever:
                 data['date'] = data['date'].apply(lambda x: pd.to_datetime(x).date())
                 data.to_excel(file_location, index = False)
             elif source == 'upstox':
-                to_date = datetime.today().strftime("%Y-%m-%d")
-                data = await self.fetch_data_from_upstox_api(time_period, time_interval, to_date=to_date)
+                to_date = datetime.strptime("16-MAY-2024", "%d-%b-%Y")
+                data = await self.fetch_data_from_upstox_api(time_period, time_interval)
             
             for ticker, st_data in data.items():
                 file_location = CHART_DATA_STORAGE_LOCATION + f"{ticker}_{time_interval}.xlsx"
@@ -89,15 +158,16 @@ class CandlePriceRetriever:
         ctr = 0
         no_of_calls = 0
         tickers = []
-        return_data  = {}        
-        for x in self.stock_to_fetch:
+        return_data  = {}
+        sections = [self.stocks_to_update[i:i+5] for i in range(0,len(self.stocks_to_update),5)]        
+        for x in self.stocks_to_update:
             logging.info(f"fetching {x} for {time_period} and {time_interval} from upstox api")
-            url = f"https://api.upstox.com/v2/historical-candle/{x}/{time_interval}/{to_date}/{from_date}"
+            url = f"https://api.upstox.com/v2/historical-candle/{x['upstox_id']}/{time_interval}/{to_date}/{from_date}"
             logging.info(url)
             all_fetch_requests.append(url)
             ctr = ctr + 1
             tickers.append(x)
-            if ctr == 25:
+            if ctr == 5:
                 all_resp = await all_urls(all_fetch_requests, requests.get)
                 #all_resp = grequests.map(all_fetch_requests, exception_handler=self.e_handlers
 
@@ -105,9 +175,9 @@ class CandlePriceRetriever:
 
                     stock_data = resp
                     df = pd.DataFrame(data = stock_data['data']['candles'], columns=['date', 'open', 'high', 'low', 'close', 'volume', 'open_interest'])
-                    return_data[ticker] = df
+                    return_data[ticker['symbol']] = df
                 logging.info("Sleeping")
-                time.sleep(5)
+                time.sleep(10)
                 ctr = 0
                 tickers = []
                 all_fetch_requests = []   
@@ -115,7 +185,7 @@ class CandlePriceRetriever:
                 print(f"total calls == {no_of_calls}")      
         print(f"total data == {len(return_data)}")        
         return return_data
+    
 
-if  __name__ == "__main__":
-    obj = CandlePriceRetriever("^NSEI", ticker_type="index")
-    obj.fetch_data("10y", "1d")
+
+candle_obj = CandlePriceRetriever()

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from server.routes.ticker import router as ticker_router
 from server.routes.strategy import router as stat_router
+from server.routes.stock_fundamentals import router as funda_router
 
 app = FastAPI()
 app.add_middleware(
@@ -14,6 +15,7 @@ app.add_middleware(
 
 app.include_router(ticker_router, prefix="/ticker")
 app.include_router(stat_router, prefix="/strategy")
+app.include_router(funda_router, prefix="/fundamentals")
 
 
 
