@@ -27,7 +27,6 @@ async def get_stock_fundamentals_from_screener(stock_symbol):
         
         quarterly_results = all_company_data.get("quarterly_results",[])
         quarterly_df = get_company_quarterly_result_df(quarterly_results, stock_symbol)
-        
         quarterly_df.to_sql("quarterly_results", conn, if_exists = "append", index = False)
 
         profit_loss = all_company_data.get("profit_loss",[])
@@ -51,7 +50,9 @@ async def get_stock_fundamentals_from_screener(stock_symbol):
         shareholding_df.to_sql("shareholding", conn, if_exists = "append", index = False)
         conn.commit()
     except sqlite3.Error as e:
+        print("Errr ->>>>>")
         print(e)
+
         conn.rollback()
 
 

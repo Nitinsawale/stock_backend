@@ -69,7 +69,7 @@ class ScreenerScraper(WebScraper):
                 if type(val) == str:
                     final_str += val
                 elif type(val) == dict:
-                    final_str += val['tag_data'][0]
+                    final_str += val['tag_data'][0] if val['tag_data'] else "0.0"
         
             ratio_value = final_str
             ratio_values = re.findall("\d+\.*\d*", ratio_value) 

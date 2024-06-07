@@ -11,4 +11,4 @@ router = APIRouter()
 @router.get("/{stock_symbol}")
 async def get_ticker_fundamental(stock_symbol):
 
-    return get_stock_fundamentals(stock_symbol)
+    return await get_stock_fundamentals(stock_symbol)

@@ -29,6 +29,10 @@ def calculate_cash_flow_rating(df):
 
 
 def calculate_shareholding_rating(df):
+
+    if df['promoters'].isna().sum() == len(df['promoters']):
+        return "BAD"
+
     df['temp'] = df['promoters'].astype(int)
 
     if df['temp'].nunique() == 1:
@@ -40,7 +44,7 @@ def calculate_shareholding_rating(df):
     if df['temp'].is_monotonic_decreasing:
         return "BAD"
 
-    if df['temp'][0] - df['temp'][-1] > 0:
+    if df['temp'][0] - df['temp'].iloc[-1] > 0:
         return "BAD"
     
     return "AVG"
@@ -63,7 +67,7 @@ def calculate_cash_flow_rating(df):
 def check_borrowings(df):
 
     if df['borrowings'].is_monotonic_increasing:
-        if df['borrrowings'][-1] < df['reserves'][-1]:
+        if df['borrowings'][-1] < df['reserves'][-1]:
             return "AVG"
         else:
             return "BAD"
