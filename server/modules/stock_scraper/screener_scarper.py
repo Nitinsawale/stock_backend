@@ -7,7 +7,7 @@ logging.basicConfig(level= logging.INFO)
 
 class ScreenerScraper(WebScraper):
     
-    def __init__(self):
+    def __init__(self,email_id = ""):
         super(WebScraper, self).__init__()
         self.site_url = "https://screener.in/"
         self.sections_to_scrape = {

@@ -10,43 +10,47 @@ async def get_stock_fundamentals_from_screener(stock_symbol):
 
     screenScraper = ScreenerScraper()
 
-
-
     all_company_data = await screenScraper.fetch_stock_data(stock_symbol)
     data_warehouse_id = all_company_data.get("data_warehouse_id","")
     data_company_id = all_company_data.get("data_company_id", "")
     try:
         conn.execute("BEGIN TRANSACTION")
 
-        remove_all_existing_data(stock_symbol)
+        
         screener_info_df = get_screener_info_df(all_company_data.get("company_ratio_and_meta"), stock_symbol, data_warehouse_id,data_company_id)
-        screener_info_df.to_sql("screener_info", conn, if_exists="append", index=False)
-
+        
         ratio_info_df = get_company_ratios_df(all_company_data.get("company_ratio_and_meta",{}).get("company_ratios",{}), stock_symbol)
-        ratio_info_df.to_sql("company_ratios", conn, if_exists="append", index=False)
         
         quarterly_results = all_company_data.get("quarterly_results",[])
         quarterly_df = get_company_quarterly_result_df(quarterly_results, stock_symbol)
-        quarterly_df.to_sql("quarterly_results", conn, if_exists = "append", index = False)
+        
 
         profit_loss = all_company_data.get("profit_loss",[])
         profit_loss_df = get_company_profit_loss_df(profit_loss, stock_symbol)
-        profit_loss_df.to_sql("profit_loss", conn, if_exists = "append", index = False)
+        
 
         balance_sheet = all_company_data.get("balance_sheet",[])
         balance_sheet_df = get_company_balance_sheet_df(balance_sheet, stock_symbol)
-        balance_sheet_df.to_sql("balance_sheet", conn, if_exists = "append", index = False)
+        
 
         cash_flows = all_company_data.get("cash_flow",[])
         cash_flows_df = get_company_cash_flow_df(cash_flows, stock_symbol)
-        cash_flows_df.to_sql("cash_flows", conn, if_exists = "append", index = False)
+        
 
         other_ratios = all_company_data.get("ratios",[])
         other_ratios_df = get_company_other_ratio_df(other_ratios, stock_symbol)
-        other_ratios_df.to_sql("other_ratios", conn, if_exists = "append", index = False)
+        
 
         shareholding = all_company_data.get("shareholding",[])
         shareholding_df = get_company_shareholding_df(shareholding.get("quarterly_shareholding",[]), stock_symbol)
+        
+        screener_info_df.to_sql("screener_info", conn, if_exists="append", index=False)
+        ratio_info_df.to_sql("company_ratios", conn, if_exists="append", index=False)
+        quarterly_df.to_sql("quarterly_results", conn, if_exists = "append", index = False)
+        profit_loss_df.to_sql("profit_loss", conn, if_exists = "append", index = False)
+        balance_sheet_df.to_sql("balance_sheet", conn, if_exists = "append", index = False)
+        cash_flows_df.to_sql("cash_flows", conn, if_exists = "append", index = False)
+        other_ratios_df.to_sql("other_ratios", conn, if_exists = "append", index = False)
         shareholding_df.to_sql("shareholding", conn, if_exists = "append", index = False)
         conn.commit()
     except sqlite3.Error as e:
@@ -113,6 +117,7 @@ def get_company_quarterly_result_df(quarterly_results, stock_symbol):
     df['symbol'] = stock_symbol
     if df.columns.name == 'month_year':
         df['month_year'] = df.index
+    df = update_existing_data(stock_symbol, df, "quarterly_results", "month_year")
     return df
 
 
@@ -129,6 +134,7 @@ def get_company_profit_loss_df(profit_loss_data, stock_symbol):
     df['symbol'] = stock_symbol
     if df.columns.name == 'month_year':
         df['month_year'] = df.index
+    df = update_existing_data(stock_symbol, df, "profit_loss", "month_year")
     return df
 
 
@@ -145,6 +151,7 @@ def get_company_balance_sheet_df(balance_sheet_data, stock_symbol):
     df['symbol'] = stock_symbol
     if df.columns.name == 'month_year':
         df['month_year'] = df.index
+    df = update_existing_data(stock_symbol, df, "balance_sheet", "month_year")
     return df
 
 
@@ -168,6 +175,7 @@ def get_company_cash_flow_df(cash_flow_data, stock_symbol):
     df.rename(columns  = col_to_replace, inplace=True)
     if df.columns.name == 'month_year':
         df['month_year'] = df.index
+    df = update_existing_data(stock_symbol, df, "cash_flows", "month_year")
     return df
 
 
@@ -184,6 +192,7 @@ def get_company_other_ratio_df(other_ratio_data, stock_symbol):
     df['symbol'] = stock_symbol
     if df.columns.name == 'month_year':
         df['month_year'] = df.index
+    df = update_existing_data(stock_symbol, df, "other_ratios", "month_year")
     return df
 
 
@@ -203,4 +212,21 @@ def get_company_shareholding_df(shareholding_data, stock_symbol, type="quarterly
     df['type'] = type
     if df.columns.name == 'month_year':
         df['month_year'] = df.index
+    df = update_existing_data(stock_symbol, df, "shareholding", "month_year")
     return df
+
+
+def get_table_data_from_db(stock_symbol, table):
+
+    query = f"select * from {table} where symbol = '{stock_symbol}'"
+    df = pd.read_sql_query(query, conn)
+    return df
+
+
+
+def update_existing_data(stock_symbol, new_df, table, column_to_check):
+
+    old_table = get_table_data_from_db(stock_symbol, table)
+    updated_df = pd.concat([old_table, new_df]).drop_duplicates(keep = False)
+    return updated_df
+

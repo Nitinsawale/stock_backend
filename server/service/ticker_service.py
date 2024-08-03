@@ -1,5 +1,5 @@
 import pandas as pd
-from server.modules.stock_scraper.stock_price_data_retriver import CandlePriceRetriever
+from server.modules.stock_scraper.stock_price_data_retriver import fetch_candle_price_data
 from server.utils.stock_db_service import conn, db_obj
 from constants import TICKER_LIST_FILE
     
@@ -14,3 +14,8 @@ def search_stock(query):
     query  = f"SELECT * FROM stock_list where symbol like '{query}%'"
     df = pd.read_sql_query(query, conn)
     return df.to_dict(orient='records')
+
+
+def get_stock_candle_data(stock_symbol, time_interval):
+
+    fetch_candle_price_data(stock_symbol, time_interval)

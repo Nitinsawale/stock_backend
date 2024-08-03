@@ -6,16 +6,82 @@ import logging
 import requests 
 import concurrent
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
-from server.utils.stock_db_service import db_obj
+from server.utils.stock_db_service import db_obj, conn
 from constants import CHART_DATA_STORAGE_LOCATION
 from server.modules.stock_scraper.stock_list_retriever import get_stock_list
 logger = logging.basicConfig(level=logging.INFO)
 
 
 
+def fetch_data_from_upstox_api(upstox_id, time_period, time_interval, to_date ="2024-05-20", from_date="2014-05-20"):
 
+    logging.info(f"fetching {upstox_id} for {time_period} and {time_interval} from upstox api")
+    url = f"https://api.upstox.com/v2/historical-candle/{upstox_id}/{time_interval}/{to_date}/{from_date}"
+    logging.info(url)
+    resp  = requests.get(url)
+    data = resp.json()
+    columns = ['date', "open", "high", "low", "close", "volume", "open_interest"]
+    df = pd.DataFrame(data['data']['candles'], columns=columns)
+    df['time_interval'] = time_interval
+    return df
+
+
+
+def get_todays_market_quote(stock_symbol, interval = "1d"):
+    today = datetime.today().strftime('%Y-%m-%d')
+    tomorrow = (datetime.today() + timedelta(days = 1)).strftime('%Y-%m-%d')
+    data = yf.Ticker(f"{stock_symbol}.NS")
+    history = data.history(start = today, end = tomorrow)
+    cols_to_replace = {x:x.lower() for x in history.columns}
+    print(cols_to_replace)
+    history.rename(columns=cols_to_replace, inplace=True)
+    history.drop(columns=['dividends', 'stock splits'], errors='ignore', inplace=True)
+    return history
+    
+
+
+
+
+def fetch_candle_price_data(stock_symbol, time_interval):
+    cur  = conn.cursor()
+    query = f"SELECT * from stock_list where symbol = '{stock_symbol}';"
+    cur.execute(query)
+    data = cur.fetchone()
+    symbol = data[4]
+    listed_date = data[6]
+    upstox_id = data[1]
+
+    candle_query = f"SELECT * from candle_price where symbol = '{symbol}' order by date DESC limit 1"
+    candle_data = cur.execute(candle_query).fetchone()
+    from_date = datetime.now().strftime("%Y-%m-%d")
+    to_date = datetime.now().strftime("%Y-%m-%d")
+    if not candle_data:
+        from_date = datetime.strptime(listed_date, "%Y-%m-%d").strftime("%Y-%m-%d")
+    else:
+        from_date = datetime.fromisoformat(candle_data[1]).strftime("%Y-%m-%d")
+    df = pd.DataFrame([], columns=['date', 'open', 'high', 'low', 'close', 'volume', 'open_interest', 'time_interval'])
+    if from_date != datetime.now().strftime("%Y-%m-%d"):
+        logging.info("fetching from upstox")
+        df = fetch_data_from_upstox_api(upstox_id, "", time_interval, to_date, from_date)
+        df['symbol'] = stock_symbol
+
+        market_quote = get_todays_market_quote(stock_symbol)
+        market_quote['date'] = market_quote.index
+        market_quote['symbol'] = stock_symbol
+        market_quote['open_interest'] = 0
+        market_quote['time_interval'] = time_interval
+        updated_df = market_quote
+        if not df.empty:
+            updated_df = pd.concat([df, market_quote]).drop_duplicates(subset=['date'])
+        updated_df['date'] = updated_df['date'].apply(str)
+        updated_df.sort_values(by = 'date', inplace=True)
+        updated_df['date'] = updated_df['date'].astype(str)
+        updated_df.to_sql("candle_price", conn, if_exists='append', index = False)
+    cur.close()
+    
+    #7397930188
 
 
 async def all_urls(urls, func_name):
@@ -40,8 +106,6 @@ class CandlePriceRetriever:
         self.update_existing_data()
         
     
-
-
     def get_list_of_data_local_non_local(self, time_interval):
         self.stocks_to_update =  db_obj.get_list_stocks_with_candle_data()
         self.stocks_to_update = [
@@ -189,3 +253,6 @@ class CandlePriceRetriever:
 
 
 candle_obj = CandlePriceRetriever()
+
+
+#fetch_data_from_upstox_api("NSE_EQ|INE117A01022","1year", "day", to_date="2024-06-10", from_date="2014-06-10")

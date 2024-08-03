@@ -1,15 +1,15 @@
 from fastapi import APIRouter
-from server.service.ticker_service import get_list_of_stocks, search_stock
+from server.service.ticker_service import get_list_of_stocks, search_stock, get_stock_candle_data
 from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
 
-# @router.get('/ticker-data/{ticker_name}/{time_period}/{time_interval}')
-# def get_ticker_data(ticker_name, time_period, time_interval):
+@router.get('/ticker-data/{ticker_symbol}/{time_interval}')
+def get_ticker_data(ticker_symbol, time_interval):
 
-#     data =get_stock_data(ticker_name = ticker_name, time_period= time_period, time_interval=time_interval)
-#     return data
+    data = get_stock_candle_data(stock_symbol = ticker_symbol, time_interval=time_interval)
+    return "updated"
 
 
 

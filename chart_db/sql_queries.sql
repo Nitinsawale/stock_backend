@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS candle_price(
         close REAL,
         volume INTEGER,
         time_interval TEXT,
+        open_interest REAL,
             FOREIGN KEY(symbol) REFERENCES stock_list(symbol));
 
 
@@ -131,6 +132,7 @@ CREATE TABLE IF NOT EXISTS balance_sheet(
         investments REAL,
         other_assets REAL,
         total_assets REAL,
+        preference_capital REAL,
             FOREIGN KEY(symbol) REFERENCES stock_list(symbol));
 
 

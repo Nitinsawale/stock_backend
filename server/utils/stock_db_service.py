@@ -5,7 +5,7 @@ import pandas as pd
 
 db_folder = "./chart_db/"
 db_name = "data.sql"
-conn = sqlite3.connect(db_folder + db_name)
+conn = sqlite3.connect(db_folder + db_name, check_same_thread=False)
 cur = conn.cursor()
 
 class CandleDB:
