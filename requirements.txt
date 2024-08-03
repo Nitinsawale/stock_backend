@@ -1,8 +1,0 @@
-beautifulsoup4
-yfinance
-pandas 
-openpyxl
-fastapi
-requests
-uvicorn
-pandas_ta

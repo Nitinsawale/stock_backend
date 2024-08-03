@@ -13,13 +13,6 @@ def get_ticker_data(ticker_symbol, time_interval):
 
 
 
-# @router.get('/refresh-ticker-list')
-# async def get_ticker_data():
-
-#     await update_latest_stock_list()
-#     return "Done"
-
-
 
 @router.get("/")
 async def get_list():
